@@ -6,21 +6,27 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 var re = regexp.MustCompile(`(?P<minutes>[0-9]+):(?P<seconds>[0-9]{2})`)
 
-func getPlaylistLength(url string) (string, error) {
+func getPlaylistLength(playlistId string, strCh chan string, errCh chan error) {
+	url := "https://www.youtube.com/playlist?list=" + playlistId
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", err
+		errCh <- fmt.Errorf("%v,%v", playlistId, err)
+		return
 	}
 	defer resp.Body.Close()
 
 	document, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
-		return "", err
+		errCh <- fmt.Errorf("%v,%v", playlistId, err)
+		return
 	}
+
+	titleString := strings.TrimSpace(document.Find(".pl-header-title").Text())
 
 	lengthSelector := document.Find(".timestamp")
 	totalLength := 0
@@ -29,12 +35,14 @@ func getPlaylistLength(url string) (string, error) {
 		minSecond := re.FindStringSubmatch(timeString)
 		minuteValue, minuteErr := strconv.Atoi(minSecond[1])
 		if minuteErr != nil {
-			return "", minuteErr
+			errCh <- fmt.Errorf("%v,%v", titleString, err)
+			return
 		}
 
 		secondValue, secondErr := strconv.Atoi(minSecond[2])
 		if secondErr != nil {
-			return "", secondErr
+			errCh <- fmt.Errorf("%v,%v", titleString, err)
+			return
 		}
 
 		totalLength = totalLength + (60 * minuteValue) + secondValue
@@ -43,5 +51,34 @@ func getPlaylistLength(url string) (string, error) {
 	totalHours := totalLength / 3600
 	totalMinutes := (totalLength % 3600) / 60
 	totalSeconds := totalLength % 60
-	return fmt.Sprintf("%v:%v:%02v", totalHours, totalMinutes, totalSeconds), nil
+	strCh <- fmt.Sprintf("%v,%v:%v:%02v", titleString, totalHours, totalMinutes, totalSeconds)
+}
+
+func getLengthOfMultiplePlaylists(playlistIds []string) map[string]string{
+	strCh := make(chan string)
+	errCh := make(chan error)
+	results := make(map[string]string)
+
+	for _, playlistId := range playlistIds {
+		go getPlaylistLength(playlistId, strCh, errCh)
+	}
+
+	i := 0
+	for {
+		select {
+			case s := <- strCh:
+				result := strings.Split(s, ",")
+				results[result[0]] = result[1]
+				i++
+				break
+			case e := <- errCh:
+				result := strings.Split(e.Error(), ",")
+				results[result[0]] = result[1]
+				break
+		}
+		if i >= len(playlistIds){
+			break
+		}
+	}
+	return results
 }

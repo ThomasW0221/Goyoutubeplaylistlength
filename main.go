@@ -3,9 +3,12 @@ package main
 import "fmt"
 
 func main() {
-	playlistLength, err := getPlaylistLength("https://www.youtube.com/playlist?list=PL0qTfdf9DoTgQDG61aOO90_bMUK0XOXMS")
-	if err != nil {
-		fmt.Println(err.Error())
+	playlists := []string{"PL0qTfdf9DoTgQDG61aOO90_bMUK0XOXMS",
+		"PLjpsoptsN4KCUuLuQ56Uy923hQhjPYlG_",
+		"PLMxPYcr2zEkWInMyvvxmN22gjrRR0x__u"}
+	results := getLengthOfMultiplePlaylists(playlists)
+	for k, v := range results {
+		fmt.Printf("%v: %v\n", k, v)
 	}
-	fmt.Println(playlistLength)
+
 }
