@@ -15,6 +15,7 @@ func getPlaylistLength(url string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer resp.Body.Close()
 
 	document, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
@@ -37,7 +38,10 @@ func getPlaylistLength(url string) (string, error) {
 		}
 
 		totalLength = totalLength + (60 * minuteValue) + secondValue
-		fmt.Println(totalLength)
 	}
-	return "hello", nil
+
+	totalHours := totalLength / 3600
+	totalMinutes := (totalLength % 3600) / 60
+	totalSeconds := totalLength % 60
+	return fmt.Sprintf("%v:%v:%02v", totalHours, totalMinutes, totalSeconds), nil
 }
