@@ -1,4 +1,4 @@
-package main
+package youtube
 
 import (
 	"fmt"
@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-var re = regexp.MustCompile(`(?P<minutes>[0-9]+):(?P<seconds>[0-9]{2})`)
+var re = regexp.MustCompile(`([0-9]+):([0-9]{2})`)
 
 func getPlaylistLength(playlistId string, strCh chan string, errCh chan error) {
 	url := "https://www.youtube.com/playlist?list=" + playlistId
@@ -54,10 +54,10 @@ func getPlaylistLength(playlistId string, strCh chan string, errCh chan error) {
 	strCh <- fmt.Sprintf("%v,%v:%v:%02v", titleString, totalHours, totalMinutes, totalSeconds)
 }
 
-func getLengthOfMultiplePlaylists(playlistIds []string) map[string]string{
+func GetLengthOfMultiplePlaylists(playlistIds []string) []PlaylistResult{
 	strCh := make(chan string)
 	errCh := make(chan error)
-	results := make(map[string]string)
+	results := make([]PlaylistResult, 0)
 
 	for _, playlistId := range playlistIds {
 		go getPlaylistLength(playlistId, strCh, errCh)
@@ -68,17 +68,18 @@ func getLengthOfMultiplePlaylists(playlistIds []string) map[string]string{
 		select {
 			case s := <- strCh:
 				result := strings.Split(s, ",")
-				results[result[0]] = result[1]
+				results = append(results, PlaylistResult{Id:result[0], Result:result[1]})
 				i++
 				break
 			case e := <- errCh:
 				result := strings.Split(e.Error(), ",")
-				results[result[0]] = result[1]
+				results = append(results, PlaylistResult{Id:result[0], Result:result[1]})
 				break
 		}
 		if i >= len(playlistIds){
 			break
 		}
 	}
+	fmt.Println(results)
 	return results
 }
