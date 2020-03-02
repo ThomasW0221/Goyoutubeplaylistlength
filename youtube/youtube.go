@@ -80,6 +80,5 @@ func GetLengthOfMultiplePlaylists(playlistIds []string) []PlaylistResult{
 			break
 		}
 	}
-	fmt.Println(results)
 	return results
 }
